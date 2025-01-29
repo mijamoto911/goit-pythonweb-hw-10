@@ -6,14 +6,24 @@ from fastapi import (
     Security,
     BackgroundTasks,
     Request,
+    UploadFile,
+    File,
 )
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.security import OAuth2PasswordRequestForm
 from src.schemas.users import UserCreate, Token, User, RequestEmail
-from src.services.auth import create_access_token, Hash, get_email_from_token
+from src.services.auth import (
+    create_access_token,
+    Hash,
+    get_email_from_token,
+    get_current_user,
+)
 from src.services.users import UserService
+from src.services.upload_file import UploadFileService
 from src.database.db import get_db
 from src.services.email import send_email
+from src.conf.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -102,3 +112,19 @@ async def confirmed_email(token: str, db: Session = Depends(get_db)):
         return {"message": "Ваша електронна пошта вже підтверджена"}
     await user_service.confirmed_email(email)
     return {"message": "Електронну пошту підтверджено"}
+
+
+@router.patch("/avatar", response_model=User)
+async def update_avatar_user(
+    file: UploadFile = File(),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    avatar_url = UploadFileService(
+        settings.CLD_NAME, settings.CLD_API_KEY, settings.CLD_API_SECRET
+    ).upload_file(file, user.username)
+
+    user_service = UserService(db)
+    user = await user_service.update_avatar_url(user.email, avatar_url)
+
+    return user
