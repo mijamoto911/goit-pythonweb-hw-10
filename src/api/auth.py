@@ -33,6 +33,7 @@ async def register_user(
     user_data: UserCreate,
     background_tasks: BackgroundTasks,
     request: Request,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_service = UserService(db)
@@ -61,7 +62,9 @@ async def register_user(
 # Логін користувача
 @router.post("/login", response_model=Token)
 async def login_user(
-    form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     user_service = UserService(db)
     user = await user_service.get_user_by_username(form_data.username)
@@ -80,11 +83,12 @@ async def login_user(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.post("/request_email")
+@router.post("/request_email", response_model=User)
 async def request_email(
     body: RequestEmail,
     background_tasks: BackgroundTasks,
     request: Request,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     user_service = UserService(db)
@@ -99,8 +103,12 @@ async def request_email(
     return {"message": "Перевірте свою електронну пошту для підтвердження"}
 
 
-@router.get("/confirmed_email/{token}")
-async def confirmed_email(token: str, db: Session = Depends(get_db)):
+@router.get("/confirmed_email/{token}", response_model=User)
+async def confirmed_email(
+    token: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     email = await get_email_from_token(token)
     user_service = UserService(db)
     user = await user_service.get_user_by_email(email)
