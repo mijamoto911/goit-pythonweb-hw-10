@@ -7,9 +7,9 @@ from sqlalchemy.sql.sqltypes import Date, DateTime
 
 
 class Base(DeclarativeBase):
-    created_at: Mapped[datetime] = mapped_column(Date, default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
-        Date, default=func.now(), onupdate=func.now()
+        DateTime, default=func.now(), onupdate=func.now()
     )
 
 
@@ -34,6 +34,5 @@ class User(Base):
     username = Column(String, unique=True)
     email = Column(String, unique=True)
     hashed_password = Column(String)
-    created_at = Column(DateTime, default=func.now())
     avatar = Column(String(255), nullable=True)
     confirmed = Column(Boolean, default=False)

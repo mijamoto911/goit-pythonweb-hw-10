@@ -24,6 +24,7 @@ from src.services.upload_file import UploadFileService
 from src.database.db import get_db
 from src.services.email import send_email
 from src.conf.config import settings
+from src.conf import messages
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,14 +43,14 @@ async def register_user(
     if email_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Користувач з таким email вже існує",
+            detail=messages.USER_ALREADY_EXIST,
         )
 
     username_user = await user_service.get_user_by_username(user_data.username)
     if username_user:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Користувач з таким іменем вже існує",
+            detail=messages.USERNAME_ALREADY_EXIST,
         )
     user_data.password = Hash().get_password_hash(user_data.password)
     new_user = await user_service.create_user(user_data)
@@ -68,16 +69,21 @@ async def login_user(
 ):
     user_service = UserService(db)
     user = await user_service.get_user_by_username(form_data.username)
+    if user and not user.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=messages.USER_NOT_AUTHENTICATED,
+        )
     if not user or not Hash().verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неправильний логін або пароль",
+            detail=messages.WRONG_PASSWORD,
             headers={"WWW-Authenticate": "Bearer"},
         )
     if not user.confirmed:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Електронна адреса не підтверджена",
+            detail=messages.USER_EMAIL_NOT_CONFIRMED,
         )
     access_token = await create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
